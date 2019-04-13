@@ -1,0 +1,26 @@
+#!/bin/bash
+# href: https://docs.docker.com/docker-hub/builds/advanced/
+# href: https://microbadger.com/labels
+# href: https://developer.github.com/v3/repos/commits/#get-the-sha-1-of-a-commit-reference
+
+# Original value: VCS_REF=$(git rev-parse --short HEAD)
+
+echo "### Building with custom build arguments"
+
+die() {
+    echo >&2 "### ERROR: $*"
+    exit 1
+}
+
+COQ_VERSION="dev"
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") || die "The date command failed."
+COQ_COMMIT=$(curl -fsL -X GET -H "Accept: application/vnd.github.v3.sha" https://api.github.com/repos/coq/coq/commits/master) || die "The curl command failed."
+COQ_COMMIT_SHORT="${COQ_COMMIT:0:7}"
+[ $? -eq 0 ] || die "The substitution failed."
+
+exec docker build --pull --rm --force-rm \
+  --build-arg=BUILD_DATE="${BUILD_DATE}" \
+  --build-arg=VCS_REF="${COQ_COMMIT_SHORT}" \
+  --build-arg=COQ_COMMIT="${COQ_COMMIT}" \
+  --build-arg COQ_VERSION="${COQ_VERSION}" \
+  -f "${DOCKERFILE_PATH}" -t "${IMAGE_NAME}" .
